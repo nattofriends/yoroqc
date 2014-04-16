@@ -98,12 +98,16 @@ class FrameWithHotKey(wx.Frame):
                 if note != u'':
                     payload = {"time": "{0}:{1}".format(minutes, seconds), "text": note}
                     json_payload = json.dumps(payload)
-                    r = requests.post(self.config.get("yoroqc", "api") + "/api/add", data=json_payload)
-                    if r.status_code == 200:
-                        response = r.json()
-                        self.queue_message = "Posted #{0}".format(response['id'])
-                    else:
-                        self.queue_message = "Error posting note."
+                    
+                    try:
+                        r = requests.post(self.config.get("yoroqc", "api") + "/api/add", data=json_payload)
+                        if r.status_code == 200:
+                            response = r.json()
+                            self.queue_message = "Posted #{0}".format(response['id'])
+                        else:
+                            self.queue_message = "Error (HTTP {0}).".format(r.status_code)
+                    except Exception as e:
+                        self.queue_message = "Error ({0})".format(type(e))
                         
                 self.intent = self.last_state
                 self.listener.send_message(mpcw32.COMMAND.CMD_PLAYPAUSE)

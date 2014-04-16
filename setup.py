@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 import sys
+import zipfile
 
 from distutils.core import setup
 import py2exe
@@ -50,11 +51,10 @@ setup(
         'py2exe': {
             'bundle_files': 3,
             'optimize': 2,
-            'dll_excludes': ["mswsock.dll", "powrprof.dll", "w9xpopen.exe"],
+            'dll_excludes': ["mswsock.dll", "powrprof.dll", "w9xpopen.exe", "msvcp90.dll"], # msvcp90.dll in assets.zip
         }
     },
     data_files=[
-        ("", [os.path.join("dll", file) for file in ["mfc90.dll", "mfc90u.dll", "mfcm90.dll", "mfcm90u.dll", "Microsoft.VC90.MFC.manifest"]]),
         ("", ["config.ini"]),
     ],
     windows=[{
@@ -63,7 +63,6 @@ setup(
     # zipfile=None,
 )
 
-# Fuck everything
-
-if not os.path.exists("dist/mpc-hc"):
-    shutil.copytree("mpc-hc", "dist/mpc-hc")
+with zipfile.ZipFile('assets.zip') as assets:
+    assets.extractall("dist")
+    

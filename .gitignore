@@ -1,0 +1,7 @@
+build/
+dist/
+
+assets.zip
+config.ini
+
+*.pyc
