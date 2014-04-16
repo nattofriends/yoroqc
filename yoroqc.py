@@ -17,8 +17,6 @@ class FrameWithHotKey(wx.Frame):
     CHOTTO_DAKE = 0.01
     MESSAGE_SHOW_DURATION = 3000
     
-    ENDPOINT = "http://asuna.nolm.name:8888/api/add"
-    
     def __init__(self, *args, **kwargs):
         wx.Frame.__init__(self, *args, **kwargs)
         self.register_hotkey()
