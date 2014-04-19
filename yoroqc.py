@@ -20,9 +20,9 @@ class FrameWithHotKey(wx.Frame):
     def __init__(self, *args, **kwargs):
         wx.Frame.__init__(self, *args, **kwargs)
         self.register_hotkey()
-        self.Bind(wx.EVT_HOTKEY, self.handleHotKey, id=self.hotKeyId)
+        self.Bind(wx.EVT_HOTKEY, self.on_hotkey, id=self.hotkey_id)
         
-        self.config = ConfigParser.ConfigParser()
+        self.config = ConfigParser.SafeConfigParser()
         self.config.read("config.ini")
         
         self.listener = mpcw32.Listener(self.on_receive_message)
@@ -31,15 +31,21 @@ class FrameWithHotKey(wx.Frame):
         self.showing = False
         self.queue_message = None
         
+        # It's probably dangerous to raise a dialog box inside a constructor, so do it on initial callback.
+        try:
+            self.author = self.config.get("yoroqc", "name")
+        except ConfigParser.NoOptionError:
+            self.author = None
+        
     def register_hotkey(self):
-        self.hotKeyId = 100
+        self.hotkey_id = 100
         self.RegisterHotKey(
-            self.hotKeyId, #a unique ID for this hotkey
+            self.hotkey_id, #a unique ID for this hotkey
             0, #the modifier key
             win32con.VK_F9,
         )
             
-    def handleHotKey(self, evt):
+    def on_hotkey(self, evt):
         """
         Prints a simple message when a hotkey event is received.
         """
@@ -59,6 +65,16 @@ class FrameWithHotKey(wx.Frame):
             # Get the last state. This produces a blip in the player, but we won't mind that for now.
             self.listener.send_message(mpcw32.COMMAND.CMD_PLAYPAUSE)
             self.listener.send_message(mpcw32.COMMAND.CMD_PLAYPAUSE)
+            
+            if not self.author:
+                dialog = wx.TextEntryDialog(None, "What is your name?", caption="YORO-QC")
+                dialog.Raise()
+                
+                dialog.ShowModal()
+                self.name = dialog.GetValue()
+                self.config.set("yoroqc", "name", self.name)
+                with open("config.ini", 'wb') as conf:
+                    self.config.write(conf)
             
         elif command == mpcw32.COMMAND.CMD_DISCONNECT:
             # Screw wxPython, we're outta here
@@ -94,7 +110,7 @@ class FrameWithHotKey(wx.Frame):
                 note = dialog.GetValue()
                 
                 if note != u'':
-                    payload = {"time": "{0}:{1}".format(minutes, seconds), "text": note}
+                    payload = {"time": "{0}:{1}".format(minutes, seconds), "text": note, "author": self.author}
                     json_payload = json.dumps(payload)
                     
                     try:
