@@ -49,8 +49,9 @@ class FrameWithHotKey(wx.Frame):
         """
         Prints a simple message when a hotkey event is received.
         """
-        self.intent = self.PAUSE
-        self.listener.send_message(mpcw32.COMMAND.CMD_PLAYPAUSE)
+        if self.last_state != self.PAUSE:
+            self.intent = self.PAUSE
+            self.listener.send_message(mpcw32.COMMAND.CMD_PLAYPAUSE)
         
         self.listener.send_message(mpcw32.COMMAND.CMD_GETCURRENTPOSITION)
         
@@ -123,8 +124,9 @@ class FrameWithHotKey(wx.Frame):
                     except Exception as e:
                         self.queue_message = "Error ({0})".format(type(e))
                         
-                self.intent = self.last_state
-                self.listener.send_message(mpcw32.COMMAND.CMD_PLAYPAUSE)
+                if self.last_state != self.PAUSE:
+                    self.intent = self.PLAY
+                    self.listener.send_message(mpcw32.COMMAND.CMD_PLAYPAUSE)
                 self.showing = False
         
 app = wx.App()
