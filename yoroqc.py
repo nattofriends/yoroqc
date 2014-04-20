@@ -127,6 +127,9 @@ class FrameWithHotKey(wx.Frame):
                 if self.last_state != self.PAUSE:
                     self.intent = self.PLAY
                     self.listener.send_message(mpcw32.COMMAND.CMD_PLAYPAUSE)
+                else:  # No state transitions happened, show message directly
+                    self.send_osd_message(self.queue_message)
+                    self.queue_message = None
                 self.showing = False
         
 app = wx.App()
