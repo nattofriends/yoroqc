@@ -55,7 +55,7 @@ setup(
         }
     },
     data_files=[
-        ("", ["config.ini"]),
+        ("", ["config.ini", "myuuse.png"]),
     ],
     windows=[{
         "script": 'yoroqc.py', 
@@ -66,3 +66,8 @@ setup(
 with zipfile.ZipFile('assets.zip') as assets:
     assets.extractall("dist")
     
+with zipfile.ZipFile("yoroqc.zip", "w") as dist:
+    for dirname, subdirs, files in os.walk("dist"):
+        dist.write(dirname)
+        for filename in files:
+            dist.write(os.path.join(dirname, filename))

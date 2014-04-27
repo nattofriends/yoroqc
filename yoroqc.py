@@ -11,16 +11,24 @@ import win32con #for the VK keycodes
 
 import mpcw32
 
-class FrameWithHotKey(wx.Frame):
+class YoroFrame(wx.Frame):
     PLAY = '0'
     PAUSE = '1'
     CHOTTO_DAKE = 0.01
     MESSAGE_SHOW_DURATION = 3000
     
-    def __init__(self, *args, **kwargs):
+    ITEM_MAP = {
+        1: "", #new
+        2: " (done)",
+        3: " (rejected)",
+    }
+    
+    def __init__(self, tb, *args, **kwargs):
         wx.Frame.__init__(self, *args, **kwargs)
         self.register_hotkey()
         self.Bind(wx.EVT_HOTKEY, self.on_hotkey, id=self.hotkey_id)
+        
+        self.tb = tb
         
         self.config = ConfigParser.SafeConfigParser()
         self.config.read("config.ini")
@@ -67,15 +75,24 @@ class FrameWithHotKey(wx.Frame):
             self.listener.send_message(mpcw32.COMMAND.CMD_PLAYPAUSE)
             self.listener.send_message(mpcw32.COMMAND.CMD_PLAYPAUSE)
             
-            if not self.author:
+            if self.author:
+                self.tb.ShowBalloon("YORO-QC", "Ohamorning, {0}.".format(self.author), flags=wx.ICON_INFORMATION)
+                
+            
+            while not self.author:
                 dialog = wx.TextEntryDialog(None, "What is your name?", caption="YORO-QC")
                 dialog.Raise()
                 
                 dialog.ShowModal()
-                self.name = dialog.GetValue()
-                self.config.set("yoroqc", "name", self.name)
-                with open("config.ini", 'wb') as conf:
-                    self.config.write(conf)
+                author = dialog.GetValue()
+                
+                if author != u'':
+                    self.author = author
+                    self.config.set("yoroqc", "name", self.author)
+                    with open("config.ini", 'wb') as conf:
+                        self.config.write(conf)
+                else:
+                    wx.MessageBox("Enter your name, faggot.", "YORO-QC", style=wx.ICON_ERROR)
             
         elif command == mpcw32.COMMAND.CMD_DISCONNECT:
             # Screw wxPython, we're outta here
@@ -100,11 +117,20 @@ class FrameWithHotKey(wx.Frame):
         elif command == mpcw32.COMMAND.CMD_CURRENTPOSITION:
             if not self.showing:
                 self.showing = True
-                time = float(data)
+                time = round(float(data))
                 minutes = str(int(time / 60)).zfill(2) 
-                seconds = str(int(round(time % 60))).zfill(2)
+                seconds = str(int(time % 60)).zfill(2)
                 
-                dialog = wx.TextEntryDialog(None, "QC Note at {0}:{1}".format(minutes, seconds), caption="YORO-QC")
+                r = requests.get(self.config.get("yoroqc", "api") + "/api/search/time/{0}:{1}".format(minutes, seconds))
+                formatted = ["QC Note at {0}:{1}".format(minutes, seconds)]
+                around = r.json()
+                if around['items']:
+                    formatted.extend(['', 'Existing Items:'])
+                for item in around['items']:
+                    formatted.append("{id}: ({time}) '{text}', by {author}{status_text}".format(status_text=self.ITEM_MAP[item['status']], **item))
+                formatted = '\n'.join(formatted)
+                
+                dialog = wx.TextEntryDialog(None, formatted, caption="YORO-QC")
                 dialog.Raise()
                 
                 dialog.ShowModal()
@@ -132,8 +158,42 @@ class FrameWithHotKey(wx.Frame):
                         self.send_osd_message(self.queue_message)
                         self.queue_message = None
                 self.showing = False
+                
+class YoroTaskBarIcon(wx.TaskBarIcon):
+    '''Despite the existence of this, let us continue to do many things through the OSD callback,
+    because no one has time to look at notification bubbles while timing.
+    '''
+    
+    def __init__(self, *args, **kwargs):
+        wx.TaskBarIcon.__init__(self, *args, **kwargs)
+        
+        log_level = wx.Log.GetLogLevel()
+        wx.Log.SetLogLevel(0)
+        icon = wx.IconFromBitmap(wx.Bitmap('myuuse.png'))
+        wx.Log.SetLogLevel(log_level)
+        
+        self.SetIcon(icon, "YORO-QC")
+        
+    def create_menu_item(self, menu, label, func):
+        item = wx.MenuItem(menu, -1, label)
+        menu.Bind(wx.EVT_MENU, func, id=item.GetId())
+        menu.AppendItem(item)
+        return item
+        
+    def CreatePopupMenu(self):
+        menu = wx.Menu()
+        # create_menu_item(menu, 'Say Hello', self.on_hello)
+        # menu.AppendSeparator()
+        self.create_menu_item(menu, 'Quit', self.on_quit)
+        return menu
+        
+    def on_quit(self, event):
+        os._exit(0)
+    
         
 app = wx.App()
 # I don't remember what these arguments mean.
-f = FrameWithHotKey(None, -1, "")
+tb = YoroTaskBarIcon()
+YoroFrame(tb, None, -1, "")
+
 app.MainLoop()
